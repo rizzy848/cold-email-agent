@@ -31,8 +31,8 @@ def format_signature(body: str, resume_text: str) -> str:
     for pattern in signoff_patterns:
         cleaned_body = re.sub(pattern, "", cleaned_body, flags=re.IGNORECASE | re.DOTALL).strip()
 
-    # Build signature
-    sig_lines = ["", "Best regards,", name or ""]
+    # Build signature (leading empty strings create blank lines)
+    sig_lines = ["", "", "Best regards,", name or ""]
     if email:
         sig_lines.append(email)
     if phone:

@@ -57,6 +57,7 @@ class SendEmailRequest(BaseModel):
     subject: str
     body: str
     recipient_email: str
+    tone: str = "professional"
 
 
 @router.post("/send-email")
@@ -84,6 +85,7 @@ async def send_email_endpoint(
             recipient_email=payload.recipient_email,
             subject=payload.subject,
             body=payload.body,
+            tone=payload.tone,
             status=status,
         )
         db.add(record)
@@ -94,6 +96,7 @@ async def send_email_endpoint(
         recipient_email=payload.recipient_email,
         subject=payload.subject,
         body=payload.body,
+        tone=payload.tone,
         status=status,
     )
     db.add(record)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
 from services.gmail import get_auth_url, exchange_code_for_token, is_gmail_connected
 import os
@@ -11,7 +11,10 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 @router.get("/auth/gmail")
 def gmail_auth():
     """Redirect user to Google OAuth consent screen."""
-    url = get_auth_url()
+    try:
+        url = get_auth_url()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
     return RedirectResponse(url)
 
 
@@ -24,4 +27,5 @@ def gmail_callback(code: str):
 
 @router.get("/auth/gmail/status")
 def gmail_status():
-    return {"connected": is_gmail_connected()}
+    configured = bool(os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET"))
+    return {"connected": is_gmail_connected(), "configured": configured}

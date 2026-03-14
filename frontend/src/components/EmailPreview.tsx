@@ -8,7 +8,7 @@ interface EmailPreviewProps {
   body: string;
   recipientName: string;
   recipientEmail: string;
-  onSend: () => void;
+  onSend: (subject: string, body: string) => void;
   onRegenerate: () => void;
   isSending: boolean;
   emailSent: boolean;
@@ -108,7 +108,7 @@ export default function EmailPreview({
       {/* Actions */}
       <div className="border-t border-white/8 px-5 py-4 flex items-center gap-3">
         <button
-          onClick={onSend}
+          onClick={() => onSend(editedSubject, editedBody)}
           disabled={isSending || emailSent}
           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${
             emailSent

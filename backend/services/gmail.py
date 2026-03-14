@@ -3,6 +3,7 @@ import base64
 import json
 from email.mime.text import MIMEText
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
@@ -10,7 +11,15 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 TOKEN_FILE = "gmail_token.json"
 
 
+def _check_oauth_config():
+    if not os.getenv("GOOGLE_CLIENT_ID") or not os.getenv("GOOGLE_CLIENT_SECRET"):
+        raise RuntimeError(
+            "Gmail OAuth not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file."
+        )
+
+
 def get_oauth_flow() -> Flow:
+    _check_oauth_config()
     client_config = {
         "web": {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
@@ -55,7 +64,7 @@ def load_credentials() -> Credentials | None:
         return None
     with open(TOKEN_FILE) as f:
         data = json.load(f)
-    return Credentials(
+    creds = Credentials(
         token=data["token"],
         refresh_token=data.get("refresh_token"),
         token_uri=data["token_uri"],
@@ -63,6 +72,12 @@ def load_credentials() -> Credentials | None:
         client_secret=data["client_secret"],
         scopes=data.get("scopes"),
     )
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request())
+        data["token"] = creds.token
+        with open(TOKEN_FILE, "w") as f:
+            json.dump(data, f)
+    return creds
 
 
 def is_gmail_connected() -> bool:

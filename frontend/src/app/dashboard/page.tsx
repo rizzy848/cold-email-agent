@@ -138,7 +138,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (subject: string, body: string) => {
     setIsSending(true);
     setSteps((prev) =>
       prev.map((s) =>
@@ -155,9 +155,10 @@ export default function DashboardPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            subject: emailSubject,
-            body: emailBody,
+            subject,
+            body,
             recipient_email: formData.recipientEmail,
+            tone: formData.tone,
           }),
         }
       );
@@ -345,7 +346,7 @@ export default function DashboardPage() {
                 body={emailBody}
                 recipientName={recipientName}
                 recipientEmail={formData.recipientEmail}
-                onSend={handleSend}
+                onSend={(subject, body) => handleSend(subject, body)}
                 onRegenerate={handleRegenerate}
                 isSending={isSending}
                 emailSent={emailSent}

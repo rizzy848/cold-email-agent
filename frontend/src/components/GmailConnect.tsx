@@ -6,6 +6,7 @@ import { CheckCircle, AlertTriangle } from "lucide-react";
 
 export default function GmailConnect() {
   const [connected, setConnected] = useState<boolean | null>(null);
+  const [configured, setConfigured] = useState<boolean>(true);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -26,6 +27,7 @@ export default function GmailConnect() {
       );
       const data = await res.json();
       setConnected(data.connected);
+      setConfigured(data.configured ?? true);
     } catch {
       setConnected(false);
     }
@@ -45,6 +47,18 @@ export default function GmailConnect() {
       <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
         <CheckCircle size={15} className="text-emerald-400 shrink-0" />
         <p className="text-sm text-emerald-300 font-medium">Gmail connected</p>
+      </div>
+    );
+  }
+
+  // OAuth credentials not configured in backend
+  if (!configured) {
+    return (
+      <div className="flex items-center gap-2.5 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+        <AlertTriangle size={15} className="text-red-400 shrink-0" />
+        <p className="text-sm text-red-300">
+          Gmail OAuth not configured — set <code className="text-red-200 bg-red-500/20 px-1 rounded">GOOGLE_CLIENT_ID</code> &amp; <code className="text-red-200 bg-red-500/20 px-1 rounded">GOOGLE_CLIENT_SECRET</code> in backend <code className="text-red-200 bg-red-500/20 px-1 rounded">.env</code>
+        </p>
       </div>
     );
   }
