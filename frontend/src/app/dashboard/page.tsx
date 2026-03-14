@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, ArrowLeft, Sparkles, FileText, AlertCircle } from "lucide-react";
+import { Mail, ArrowLeft, Sparkles, FileText, AlertCircle, Clock } from "lucide-react";
 import ResumeUpload from "@/components/ResumeUpload";
 import AgentProgress, { AgentStep } from "@/components/AgentProgress";
 import EmailPreview from "@/components/EmailPreview";
@@ -61,7 +61,7 @@ export default function DashboardPage() {
   const [emailBody, setEmailBody] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [isSending, setIsSending] = useState(false);
-  const [draftSent, setDraftSent] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -71,7 +71,7 @@ export default function DashboardPage() {
 
     setAppState("processing");
     setErrorMsg("");
-    setDraftSent(false);
+    setEmailSent(false);
     setSteps(makeInitialSteps());
 
     const update = (id: string, patch: Partial<AgentStep>) =>
@@ -136,19 +136,19 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSendToDraft = async () => {
+  const handleSend = async () => {
     setIsSending(true);
     setSteps((prev) =>
       prev.map((s) =>
-        s.id === "send" ? { ...s, status: "running", detail: "Pushing to Gmail…" } : s
+        s.id === "send" ? { ...s, status: "running", detail: "Sending email…" } : s
       )
     );
 
     try {
       const res = await fetch(
         process.env.NEXT_PUBLIC_API_URL
-          ? `${process.env.NEXT_PUBLIC_API_URL}/api/save-draft`
-          : "http://localhost:8000/api/save-draft",
+          ? `${process.env.NEXT_PUBLIC_API_URL}/api/send-email`
+          : "http://localhost:8000/api/send-email",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -160,16 +160,16 @@ export default function DashboardPage() {
         }
       );
 
-      if (!res.ok) throw new Error("Failed to save draft");
+      if (!res.ok) throw new Error("Failed to send email");
 
       setSteps((prev) =>
         prev.map((s) =>
-          s.id === "send" ? { ...s, status: "done", detail: "Draft saved to Gmail ✓" } : s
+          s.id === "send" ? { ...s, status: "done", detail: "Email sent ✓" } : s
         )
       );
-      setDraftSent(true);
+      setEmailSent(true);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to save draft";
+      const message = err instanceof Error ? err.message : "Failed to send email";
       setSteps((prev) =>
         prev.map((s) =>
           s.id === "send" ? { ...s, status: "error", detail: message } : s
@@ -184,11 +184,11 @@ export default function DashboardPage() {
     setAppState("idle");
     setEmailSubject("");
     setEmailBody("");
-    setDraftSent(false);
+    setEmailSent(false);
     setSteps(makeInitialSteps());
   };
 
-  const isReady = formData.jobDescription.trim() && resumeFile;
+  const isReady = formData.jobDescription.trim() && formData.recipientEmail.trim() && resumeFile;
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
@@ -205,6 +205,15 @@ export default function DashboardPage() {
             <span className="font-semibold">MailForge</span>
           </div>
           <span className="text-white/20 text-sm ml-2">/ Orchestrator</span>
+          <div className="ml-auto">
+            <Link
+              href="/history"
+              className="text-white/30 hover:text-white/70 transition-colors text-sm flex items-center gap-1.5"
+            >
+              <Clock size={14} />
+              History
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -245,7 +254,7 @@ export default function DashboardPage() {
               {/* Recipient email */}
               <div>
                 <label className="block text-xs font-medium text-white/40 uppercase tracking-wider mb-2">
-                  Recruiter Email (optional)
+                  Recruiter Email *
                 </label>
                 <div className="relative">
                   <Mail
@@ -329,10 +338,10 @@ export default function DashboardPage() {
                 body={emailBody}
                 recipientName={recipientName}
                 recipientEmail={formData.recipientEmail}
-                onSendToDraft={handleSendToDraft}
+                onSend={handleSend}
                 onRegenerate={handleRegenerate}
                 isSending={isSending}
-                draftSent={draftSent}
+                emailSent={emailSent}
               />
             )}
           </div>
