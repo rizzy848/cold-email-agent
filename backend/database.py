@@ -13,6 +13,14 @@ SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
 
+class GmailToken(Base):
+    __tablename__ = "gmail_tokens"
+
+    id = Column(String, primary_key=True, default="default")
+    token_json = Column(Text, nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
 class EmailRecord(Base):
     __tablename__ = "emails"
 

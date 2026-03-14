@@ -9,9 +9,9 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 
+from database import SessionLocal, GmailToken
+
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
-TOKEN_FILE = "gmail_token.json"
-VERIFIER_FILE = "oauth_verifier.txt"
 
 # In-memory store for PKCE verifier (survives within a single process)
 _pkce_verifier: str | None = None
@@ -45,7 +45,6 @@ def get_oauth_flow() -> Flow:
 def get_auth_url() -> str:
     global _pkce_verifier
     flow = get_oauth_flow()
-    # Generate PKCE code verifier and challenge
     _pkce_verifier = secrets.token_urlsafe(64)
     code_challenge = base64.urlsafe_b64encode(
         hashlib.sha256(_pkce_verifier.encode()).digest()
@@ -57,6 +56,31 @@ def get_auth_url() -> str:
         code_challenge_method="S256",
     )
     return auth_url
+
+
+def _save_token_to_db(token_data: dict):
+    db = SessionLocal()
+    try:
+        record = db.get(GmailToken, "default")
+        if record:
+            record.token_json = json.dumps(token_data)
+        else:
+            record = GmailToken(id="default", token_json=json.dumps(token_data))
+            db.add(record)
+        db.commit()
+    finally:
+        db.close()
+
+
+def _load_token_from_db() -> dict | None:
+    db = SessionLocal()
+    try:
+        record = db.get(GmailToken, "default")
+        if record:
+            return json.loads(record.token_json)
+        return None
+    finally:
+        db.close()
 
 
 def exchange_code_for_token(code: str) -> dict:
@@ -73,16 +97,14 @@ def exchange_code_for_token(code: str) -> dict:
         "client_secret": creds.client_secret,
         "scopes": list(creds.scopes) if creds.scopes else [],
     }
-    with open(TOKEN_FILE, "w") as f:
-        json.dump(token_data, f)
+    _save_token_to_db(token_data)
     return token_data
 
 
 def load_credentials() -> Credentials | None:
-    if not os.path.exists(TOKEN_FILE):
+    data = _load_token_from_db()
+    if not data:
         return None
-    with open(TOKEN_FILE) as f:
-        data = json.load(f)
     creds = Credentials(
         token=data["token"],
         refresh_token=data.get("refresh_token"),
@@ -94,13 +116,12 @@ def load_credentials() -> Credentials | None:
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
         data["token"] = creds.token
-        with open(TOKEN_FILE, "w") as f:
-            json.dump(data, f)
+        _save_token_to_db(data)
     return creds
 
 
 def is_gmail_connected() -> bool:
-    return os.path.exists(TOKEN_FILE)
+    return _load_token_from_db() is not None
 
 
 def send_email(to: str, subject: str, body: str) -> bool:
