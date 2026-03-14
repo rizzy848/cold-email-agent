@@ -11,6 +11,9 @@ from database import SessionLocal, GmailToken
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
+# In-memory fallback when DB is unavailable
+_token_memory: dict | None = None
+
 
 def _check_oauth_config():
     if not os.getenv("GOOGLE_CLIENT_ID") or not os.getenv("GOOGLE_CLIENT_SECRET"):
@@ -47,28 +50,36 @@ def get_auth_url() -> str:
 
 
 def _save_token_to_db(token_data: dict):
-    db = SessionLocal()
+    global _token_memory
+    _token_memory = token_data  # Always save in memory
     try:
-        record = db.get(GmailToken, "default")
-        if record:
-            record.token_json = json.dumps(token_data)
-        else:
-            record = GmailToken(id="default", token_json=json.dumps(token_data))
-            db.add(record)
-        db.commit()
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            record = db.get(GmailToken, "default")
+            if record:
+                record.token_json = json.dumps(token_data)
+            else:
+                record = GmailToken(id="default", token_json=json.dumps(token_data))
+                db.add(record)
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"WARNING: Could not save token to DB (using memory fallback): {e}")
 
 
 def _load_token_from_db() -> dict | None:
-    db = SessionLocal()
     try:
-        record = db.get(GmailToken, "default")
-        if record:
-            return json.loads(record.token_json)
-        return None
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            record = db.get(GmailToken, "default")
+            if record:
+                return json.loads(record.token_json)
+        finally:
+            db.close()
+    except Exception:
+        pass
+    return _token_memory  # Fall back to in-memory
 
 
 def exchange_code_for_token(code: str) -> dict:
