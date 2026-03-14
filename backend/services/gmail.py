@@ -13,6 +13,9 @@ from database import SessionLocal, GmailToken, OAuthState
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
 
+# Fallback in-memory store if DB is unavailable
+_pkce_verifier_memory: str | None = None
+
 
 def _check_oauth_config():
     if not os.getenv("GOOGLE_CLIENT_ID") or not os.getenv("GOOGLE_CLIENT_SECRET"):
@@ -40,26 +43,36 @@ def get_oauth_flow() -> Flow:
 
 
 def _save_pkce_verifier(verifier: str):
-    db = SessionLocal()
+    global _pkce_verifier_memory
+    _pkce_verifier_memory = verifier
     try:
-        record = db.get(OAuthState, "default")
-        if record:
-            record.pkce_verifier = verifier
-        else:
-            record = OAuthState(id="default", pkce_verifier=verifier)
-            db.add(record)
-        db.commit()
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            record = db.get(OAuthState, "default")
+            if record:
+                record.pkce_verifier = verifier
+            else:
+                record = OAuthState(id="default", pkce_verifier=verifier)
+                db.add(record)
+            db.commit()
+        finally:
+            db.close()
+    except Exception:
+        pass  # Fall back to in-memory
 
 
 def _load_pkce_verifier() -> str | None:
-    db = SessionLocal()
     try:
-        record = db.get(OAuthState, "default")
-        return record.pkce_verifier if record else None
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            record = db.get(OAuthState, "default")
+            if record and record.pkce_verifier:
+                return record.pkce_verifier
+        finally:
+            db.close()
+    except Exception:
+        pass
+    return _pkce_verifier_memory  # Fall back to in-memory
 
 
 def get_auth_url() -> str:

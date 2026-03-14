@@ -13,7 +13,7 @@ def gmail_auth():
     """Redirect user to Google OAuth consent screen."""
     try:
         url = get_auth_url()
-    except RuntimeError as e:
+    except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
     return RedirectResponse(url)
 
