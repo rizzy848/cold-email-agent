@@ -6,6 +6,8 @@ import { Mail, ArrowLeft, Sparkles, FileText, AlertCircle, Clock } from "lucide-
 import ResumeUpload from "@/components/ResumeUpload";
 import AgentProgress, { AgentStep } from "@/components/AgentProgress";
 import EmailPreview from "@/components/EmailPreview";
+import { Suspense } from "react";
+import GmailConnect from "@/components/GmailConnect";
 
 // ----- Types -----
 interface FormData {
@@ -302,6 +304,11 @@ export default function DashboardPage() {
                 </label>
                 <ResumeUpload file={resumeFile} onFileSelect={setResumeFile} />
               </div>
+
+              {/* Gmail connect status */}
+              <Suspense fallback={null}>
+                <GmailConnect />
+              </Suspense>
 
               {/* Error */}
               {errorMsg && (
