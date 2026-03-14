@@ -2,10 +2,13 @@ from sqlalchemy import create_engine, Column, String, Text, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime, timezone
 import uuid
+import os
 
-DATABASE_URL = "sqlite:///./emails.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./emails.db")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# PostgreSQL doesn't need check_same_thread
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
