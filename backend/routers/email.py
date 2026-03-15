@@ -53,16 +53,13 @@ async def generate_email(
 
 # ── Send email ────────────────────────────────────────────────────────────────
 
-class SendEmailRequest(BaseModel):
-    subject: str
-    body: str
-    recipient_email: str
-    tone: str = "professional"
-
-
 @router.post("/send-email")
 async def send_email_endpoint(
-    payload: SendEmailRequest,
+    subject: str = Form(...),
+    body: str = Form(...),
+    recipient_email: str = Form(...),
+    tone: str = Form("professional"),
+    resume: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ):
     if not is_gmail_connected():
@@ -71,11 +68,19 @@ async def send_email_endpoint(
             detail="Gmail not connected. Visit /api/auth/gmail to authorize.",
         )
 
+    attachment = None
+    attachment_name = "resume.pdf"
+    if resume:
+        attachment = await resume.read()
+        attachment_name = resume.filename or "resume.pdf"
+
     try:
         send_email(
-            to=payload.recipient_email,
-            subject=payload.subject,
-            body=payload.body,
+            to=recipient_email,
+            subject=subject,
+            body=body,
+            attachment=attachment,
+            attachment_name=attachment_name,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -83,10 +88,10 @@ async def send_email_endpoint(
     # Save to DB — best effort, don't fail if DB is down
     try:
         record = EmailRecord(
-            recipient_email=payload.recipient_email,
-            subject=payload.subject,
-            body=payload.body,
-            tone=payload.tone,
+            recipient_email=recipient_email,
+            subject=subject,
+            body=body,
+            tone=tone,
             status="sent",
         )
         db.add(record)

@@ -3,6 +3,8 @@ import base64
 import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
@@ -141,7 +143,7 @@ def is_gmail_connected() -> bool:
         return False
 
 
-def send_email(to: str, subject: str, body: str) -> bool:
+def send_email(to: str, subject: str, body: str, attachment: bytes | None = None, attachment_name: str = "resume.pdf") -> bool:
     """Send an email via Gmail API. Returns True on success."""
     creds = load_credentials()
     if not creds:
@@ -156,11 +158,25 @@ def send_email(to: str, subject: str, body: str) -> bool:
     )
     html = f'<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#000;">{html_body}</div>'
 
-    message = MIMEMultipart("alternative")
-    message["to"] = to
-    message["subject"] = subject
-    message.attach(MIMEText(body, "plain", "utf-8"))
-    message.attach(MIMEText(html, "html", "utf-8"))
+    if attachment:
+        message = MIMEMultipart("mixed")
+        message["to"] = to
+        message["subject"] = subject
+        alt = MIMEMultipart("alternative")
+        alt.attach(MIMEText(body, "plain", "utf-8"))
+        alt.attach(MIMEText(html, "html", "utf-8"))
+        message.attach(alt)
+        part = MIMEBase("application", "pdf")
+        part.set_payload(attachment)
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f'attachment; filename="{attachment_name}"')
+        message.attach(part)
+    else:
+        message = MIMEMultipart("alternative")
+        message["to"] = to
+        message["subject"] = subject
+        message.attach(MIMEText(body, "plain", "utf-8"))
+        message.attach(MIMEText(html, "html", "utf-8"))
 
     raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
     service.users().messages().send(userId="me", body={"raw": raw}).execute()

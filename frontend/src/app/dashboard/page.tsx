@@ -64,6 +64,7 @@ export default function DashboardPage() {
   const [recipientName, setRecipientName] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [attachResume, setAttachResume] = useState(false);
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -147,20 +148,18 @@ export default function DashboardPage() {
     );
 
     try {
+      const fd = new FormData();
+      fd.append("subject", subject);
+      fd.append("body", body);
+      fd.append("recipient_email", formData.recipientEmail);
+      fd.append("tone", formData.tone);
+      if (attachResume && resumeFile) fd.append("resume", resumeFile);
+
       const res = await fetch(
         process.env.NEXT_PUBLIC_API_URL
           ? `${process.env.NEXT_PUBLIC_API_URL}/api/send-email`
           : "http://localhost:8000/api/send-email",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            subject,
-            body,
-            recipient_email: formData.recipientEmail,
-            tone: formData.tone,
-          }),
-        }
+        { method: "POST", body: fd }
       );
 
       if (!res.ok) throw new Error("Failed to send email");
@@ -305,6 +304,19 @@ export default function DashboardPage() {
                 </label>
                 <ResumeUpload file={resumeFile} onFileSelect={setResumeFile} />
               </div>
+
+              {/* Attach resume checkbox */}
+              {resumeFile && (
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${attachResume ? "bg-indigo-600 border-indigo-600" : "border-white/20 bg-white/5"}`}
+                    onClick={() => setAttachResume(!attachResume)}>
+                    {attachResume && <svg viewBox="0 0 10 8" className="w-2.5 h-2.5" fill="none"><path d="M1 4l3 3 5-6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
+                  <span className="text-sm text-white/50 group-hover:text-white/70 transition-colors" onClick={() => setAttachResume(!attachResume)}>
+                    Attach resume as PDF
+                  </span>
+                </label>
+              )}
 
               {/* Gmail connect status */}
               <Suspense fallback={null}>
