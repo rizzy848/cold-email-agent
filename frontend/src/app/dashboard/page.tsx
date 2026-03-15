@@ -351,6 +351,38 @@ export default function DashboardPage() {
               </button>
             </div>
 
+            {/* Loading skeleton */}
+            {appState === "processing" && (
+              <div className="bg-white/[0.03] border border-white/8 rounded-2xl overflow-hidden">
+                <div className="border-b border-white/8 px-5 py-4">
+                  <div className="h-3 w-24 bg-white/10 rounded-full animate-pulse mb-2" />
+                  <div className="h-3 w-40 bg-white/5 rounded-full animate-pulse" />
+                </div>
+                <div className="border-b border-white/5 px-5 py-3">
+                  <div className="h-3 w-64 bg-white/10 rounded-full animate-pulse" />
+                </div>
+                <div className="px-5 py-5 space-y-3 min-h-[280px]">
+                  <div className="h-3 w-full bg-white/10 rounded-full animate-pulse" />
+                  <div className="h-3 w-[92%] bg-white/8 rounded-full animate-pulse" />
+                  <div className="h-3 w-[85%] bg-white/8 rounded-full animate-pulse" />
+                  <div className="h-3 w-[88%] bg-white/6 rounded-full animate-pulse" />
+                  <div className="h-3 w-0 mt-2" />
+                  <div className="h-3 w-full bg-white/8 rounded-full animate-pulse" />
+                  <div className="h-3 w-[90%] bg-white/6 rounded-full animate-pulse" />
+                  <div className="h-3 w-[80%] bg-white/6 rounded-full animate-pulse" />
+                  <div className="h-3 w-0 mt-2" />
+                  <div className="h-3 w-[60%] bg-white/8 rounded-full animate-pulse" />
+                  <div className="h-3 w-0 mt-2" />
+                  <div className="h-3 w-32 bg-white/6 rounded-full animate-pulse" />
+                  <div className="h-3 w-40 bg-white/5 rounded-full animate-pulse" />
+                  <div className="h-3 w-28 bg-white/5 rounded-full animate-pulse" />
+                </div>
+                <div className="border-t border-white/8 px-5 py-4">
+                  <div className="h-8 w-28 bg-white/10 rounded-xl animate-pulse" />
+                </div>
+              </div>
+            )}
+
             {/* Email preview */}
             {appState === "done" && emailBody && (
               <EmailPreview
