@@ -256,7 +256,10 @@ export default function DashboardPage() {
               </div>
 
               {/* Recruiter finder */}
-              <RecruiterFinder onSelect={(email) => setFormData((f) => ({ ...f, recipientEmail: email }))} />
+              <RecruiterFinder
+                onSelect={(email) => setFormData((f) => ({ ...f, recipientEmail: email }))}
+                jobDescription={formData.jobDescription}
+              />
 
               {/* Recipient email */}
               <div>
