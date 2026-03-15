@@ -15,7 +15,7 @@ How-to-use:
 9. You can review the draft and edit it to fix any errors.
 11. Regenerate the email if you want to change the wording. 
 12. Click to send the email.
-13. See the history of previous emails sent.
+13. Go to the top right corner of the home page to see the history of previous emails sent and which ones were successful. 
 
 
 Tech Stack: 
