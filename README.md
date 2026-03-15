@@ -2,6 +2,7 @@
 
 A multi-agent system built strictly for job hunters. Unlike standard LLM wrappers, the Cold Email Agent ensures that every outreach is factually grounded in the user's real portfolio and the recruiter's specific company context using job description and their resume. 
 
+
 How-to-use:
 1. Connect your Google account and decide which account to send the email from. 
 2. Copy and paste the full job description of the position you are applying for into the text box.
@@ -13,16 +14,19 @@ How-to-use:
 8. You can review the draft and regenerate if you want to change the wording. 
 9. Click to send the email.
 
+
 Tech Stack: 
-Frontend: Next.js/TypeScript
-Backend: Python (Fast API)
-Database: Supabase (Postgres)
-APIs: Claude, Gmail 
+- Frontend: Next.js/TypeScript
+- Backend: Python (Fast API)
+- Database: Supabase (Postgres)
+- APIs: Claude, Gmail 
+
 
 Prerequisites:
 - Google Cloud Project with Gmail API enabled and OAuth2 credentials
 - Anthropic API Key
 - Supabase account 
+
 
 Installation Steps:
 1. Clone the repository
