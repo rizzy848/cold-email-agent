@@ -118,6 +118,22 @@ def load_credentials() -> Credentials | None:
     return creds
 
 
+def disconnect_gmail():
+    global _token_memory
+    _token_memory = None
+    try:
+        db = SessionLocal()
+        try:
+            record = db.get(GmailToken, "default")
+            if record:
+                db.delete(record)
+                db.commit()
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+
 def is_gmail_connected() -> bool:
     try:
         return _load_token_from_db() is not None

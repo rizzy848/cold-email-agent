@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
-from services.gmail import get_auth_url, exchange_code_for_token, is_gmail_connected
+from services.gmail import get_auth_url, exchange_code_for_token, is_gmail_connected, disconnect_gmail
 import os
 
 router = APIRouter()
@@ -32,3 +32,9 @@ def gmail_callback(code: str):
 def gmail_status():
     configured = bool(os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET"))
     return {"connected": is_gmail_connected(), "configured": configured}
+
+
+@router.post("/auth/gmail/disconnect")
+def gmail_disconnect():
+    disconnect_gmail()
+    return {"status": "disconnected"}

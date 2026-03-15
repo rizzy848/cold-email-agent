@@ -38,15 +38,29 @@ export default function GmailConnect() {
     window.location.href = `${base}/api/auth/gmail`;
   };
 
+  const handleDisconnect = async () => {
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    await fetch(`${base}/api/auth/gmail/disconnect`, { method: "POST" });
+    setConnected(false);
+  };
+
   // Still loading
   if (connected === null) return null;
 
   // Connected
   if (connected) {
     return (
-      <div className="flex items-center gap-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
-        <CheckCircle size={15} className="text-emerald-400 shrink-0" />
-        <p className="text-sm text-emerald-300 font-medium">Gmail connected</p>
+      <div className="flex items-center justify-between gap-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <CheckCircle size={15} className="text-emerald-400 shrink-0" />
+          <p className="text-sm text-emerald-300 font-medium">Gmail connected</p>
+        </div>
+        <button
+          onClick={handleDisconnect}
+          className="text-xs text-emerald-400/60 hover:text-red-400 transition-colors underline underline-offset-2"
+        >
+          Disconnect
+        </button>
       </div>
     );
   }
