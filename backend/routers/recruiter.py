@@ -101,8 +101,54 @@ def _resolve_domain(company: str, domain_hint: str) -> str:
     return ""
 
 
-async def _hunter_search(domain: str) -> list[dict]:
-    """Hunter.io domain-search. Returns [] if key missing or request fails."""
+async def _hunter_email_finder(domain: str, recruiter_name: str) -> list[dict]:
+    """
+    Hunter.io email-finder — most accurate when we have a specific name.
+    Splits recruiter_name into first/last and queries the endpoint directly.
+    """
+    api_key = os.getenv("HUNTER_API_KEY", "").strip()
+    if not api_key or not domain or not recruiter_name:
+        return []
+
+    parts = recruiter_name.strip().split()
+    if len(parts) < 2:
+        return []
+
+    first, last = parts[0], parts[-1]
+
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(
+                "https://api.hunter.io/v2/email-finder",
+                params={
+                    "domain": domain,
+                    "first_name": first,
+                    "last_name": last,
+                    "api_key": api_key,
+                },
+                timeout=8,
+            )
+        if res.status_code != 200:
+            return []
+
+        data = res.json().get("data", {})
+        email = data.get("email")
+        if not email:
+            return []
+
+        return [{
+            "name": f"{data.get('first_name', first)} {data.get('last_name', last)}".strip(),
+            "email": email,
+            "title": data.get("position") or "",
+            "confidence": min(int(data.get("score", 75)), 100),
+            "source": "hunter",
+        }]
+    except Exception:
+        return []
+
+
+async def _hunter_domain_search(domain: str) -> list[dict]:
+    """Hunter.io domain-search — finds all emails at a domain, sorted by recruiting role."""
     api_key = os.getenv("HUNTER_API_KEY", "").strip()
     if not api_key or not domain:
         return []
@@ -199,8 +245,14 @@ async def find_recruiters(payload: FindRecruitersRequest):
     # 2. Resolve domain
     domain = _resolve_domain(company, extracted.get("domain_hint", ""))
 
-    # 3. Hunter.io (preferred)
-    contacts = await _hunter_search(domain)
+    recruiter_name = extracted.get("recruiter_name", "").strip()
+
+    # 3a. Hunter email-finder — most accurate when recruiter name is known
+    contacts = await _hunter_email_finder(domain, recruiter_name)
+
+    # 3b. Hunter domain-search — browse all emails at the domain
+    if not contacts:
+        contacts = await _hunter_domain_search(domain)
 
     # 4. DuckDuckGo fallback
     if not contacts:
