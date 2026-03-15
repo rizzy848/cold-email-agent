@@ -1,6 +1,6 @@
 # Cold Email Agent
 
-A multi-agent system built strictly for job hunters. Unlike standard LLM wrappers, the Cold Email Agent ensures that every outreach is factually grounded in the user's real resume and the specific job description — no hallucinated credentials, no generic AI filler.
+A specialized agent system built strictly for job hunters. Unlike standard LLM wrappers, the Cold Email Agent ensures that every outreach is factually grounded in the user's real resume and the specific job description, without hallucinated credentials and generic AI filler.
 
 ## How to Use
 
