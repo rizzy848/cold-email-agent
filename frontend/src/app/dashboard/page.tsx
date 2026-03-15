@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, ArrowLeft, Sparkles, FileText, AlertCircle, Clock } from "lucide-react";
+import { Mail, ArrowLeft, Sparkles, FileText, AlertCircle, Clock, Layers } from "lucide-react";
 import ResumeUpload from "@/components/ResumeUpload";
 import AgentProgress, { AgentStep } from "@/components/AgentProgress";
 import EmailPreview from "@/components/EmailPreview";
+import ResearchInsights from "@/components/ResearchInsights";
 import { Suspense } from "react";
 import GmailConnect from "@/components/GmailConnect";
 
@@ -27,9 +28,15 @@ const makeInitialSteps = (): AgentStep[] => [
     status: "idle",
   },
   {
+    id: "web",
+    label: "Web Research Agent",
+    description: "Searches the web for company news & tech context — no API key needed",
+    status: "idle",
+  },
+  {
     id: "draft",
     label: "Email Drafting Agent",
-    description: "Writes a personalized email using your resume",
+    description: "Writes a personalized email using your resume + live research",
     status: "idle",
   },
   {
@@ -65,7 +72,14 @@ export default function DashboardPage() {
   const [isSending, setIsSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
+  // Research state
+  const [researchHook, setResearchHook] = useState("");
+  const [companyNews, setCompanyNews] = useState<string[]>([]);
+  const [detectedCompany, setDetectedCompany] = useState("");
+
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   // ---- submit ----
   const handleGenerate = async () => {
@@ -74,6 +88,9 @@ export default function DashboardPage() {
     setAppState("processing");
     setErrorMsg("");
     setEmailSent(false);
+    setResearchHook("");
+    setCompanyNews([]);
+    setDetectedCompany("");
     setSteps(makeInitialSteps());
 
     const update = (id: string, patch: Partial<AgentStep>) =>
@@ -89,42 +106,59 @@ export default function DashboardPage() {
       fd.append("tone", formData.tone);
       fd.append("resume", resumeFile);
 
-      const res = await fetch(
-        process.env.NEXT_PUBLIC_API_URL
-          ? `${process.env.NEXT_PUBLIC_API_URL}/api/generate-email`
-          : "http://localhost:8000/api/generate-email",
-        { method: "POST", body: fd }
-      );
-
+      // Step 2: Web research (fires concurrently on backend — show it running)
+      await sleep(400);
       update("research", { status: "done", detail: "Role & company data extracted" });
-      await sleep(300);
+      update("web", { status: "running", detail: "Searching web for company news…" });
+
+      const res = await fetch(`${API}/api/generate-email`, {
+        method: "POST",
+        body: fd,
+      });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ detail: res.statusText }));
         throw new Error(err.detail || "Backend error");
       }
 
-      // Step 2: Draft
-      update("draft", { status: "running", detail: "Composing personalized email…" });
-      await sleep(200);
-
       const data = await res.json();
 
+      // Update research step with what was found
+      const hookFound = !!data.research_hook;
+      const newsCount = (data.company_news || []).length;
+      update("web", {
+        status: "done",
+        detail: hookFound
+          ? `Found ${newsCount} news item(s) — personalization hook generated`
+          : "No recent news found — standard email generated",
+      });
+      await sleep(200);
+
+      // Step 3: Draft
+      update("draft", { status: "running", detail: "Composing personalized email…" });
+      await sleep(300);
       update("draft", { status: "done", detail: "Draft generated" });
-      await sleep(300);
+      await sleep(200);
 
-      // Step 3: Format
+      // Step 4: Format
       update("format", { status: "running", detail: "Formatting signature…" });
-      await sleep(400);
-      update("format", { status: "done", detail: "Signature applied" });
       await sleep(300);
+      update("format", { status: "done", detail: "Signature applied" });
+      await sleep(200);
 
-      // Step 4: Gmail (triggered by user)
+      // Step 5: Gmail (triggered by user)
       update("send", { status: "idle", detail: "Waiting for your confirmation" });
 
       setEmailSubject(data.subject || "");
       setEmailBody(data.body || "");
       setRecipientName(data.recipient_name || "Recruiter");
+      setResearchHook(data.research_hook || "");
+      setCompanyNews(data.company_news || []);
+
+      // Extract company name from job description for display
+      const companyMatch = formData.jobDescription.match(/(?:at|@)\s+([A-Z][a-zA-Z\s]+)/);
+      setDetectedCompany(companyMatch?.[1]?.trim() || "the company");
+
       setAppState("done");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Something went wrong";
@@ -147,21 +181,16 @@ export default function DashboardPage() {
     );
 
     try {
-      const res = await fetch(
-        process.env.NEXT_PUBLIC_API_URL
-          ? `${process.env.NEXT_PUBLIC_API_URL}/api/send-email`
-          : "http://localhost:8000/api/send-email",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            subject,
-            body,
-            recipient_email: formData.recipientEmail,
-            tone: formData.tone,
-          }),
-        }
-      );
+      const res = await fetch(`${API}/api/send-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject,
+          body,
+          recipient_email: formData.recipientEmail,
+          tone: formData.tone,
+        }),
+      });
 
       if (!res.ok) throw new Error("Failed to send email");
 
@@ -188,6 +217,8 @@ export default function DashboardPage() {
     setEmailSubject("");
     setEmailBody("");
     setEmailSent(false);
+    setResearchHook("");
+    setCompanyNews([]);
     setSteps(makeInitialSteps());
   };
 
@@ -208,7 +239,14 @@ export default function DashboardPage() {
             <span className="font-semibold">MailForge</span>
           </div>
           <span className="text-white/20 text-sm ml-2">/ Orchestrator</span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-4">
+            <Link
+              href="/campaign"
+              className="text-white/50 hover:text-white/80 transition-colors text-sm flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 px-3 py-1.5 rounded-lg border border-indigo-500/30"
+            >
+              <Layers size={13} />
+              Campaign Mode
+            </Link>
             <Link
               href="/history"
               className="text-white/30 hover:text-white/70 transition-colors text-sm flex items-center gap-1.5"
@@ -238,17 +276,12 @@ export default function DashboardPage() {
                   Job Description *
                 </label>
                 <div className="relative">
-                  <FileText
-                    size={15}
-                    className="absolute left-3 top-3.5 text-white/25"
-                  />
+                  <FileText size={15} className="absolute left-3 top-3.5 text-white/25" />
                   <textarea
                     rows={6}
                     placeholder="Paste the full job description here…"
                     value={formData.jobDescription}
-                    onChange={(e) =>
-                      setFormData((f) => ({ ...f, jobDescription: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((f) => ({ ...f, jobDescription: e.target.value }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.07] transition-all resize-none"
                   />
                 </div>
@@ -260,17 +293,12 @@ export default function DashboardPage() {
                   Recruiter Email *
                 </label>
                 <div className="relative">
-                  <Mail
-                    size={15}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25"
-                  />
+                  <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
                   <input
                     type="email"
                     placeholder="recruiter@company.com"
                     value={formData.recipientEmail}
-                    onChange={(e) =>
-                      setFormData((f) => ({ ...f, recipientEmail: e.target.value }))
-                    }
+                    onChange={(e) => setFormData((f) => ({ ...f, recipientEmail: e.target.value }))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder-white/20 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.07] transition-all"
                   />
                 </div>
@@ -339,6 +367,15 @@ export default function DashboardPage() {
               </button>
             </div>
 
+            {/* Research insights */}
+            {appState === "done" && (
+              <ResearchInsights
+                researchHook={researchHook}
+                companyNews={companyNews}
+                company={detectedCompany}
+              />
+            )}
+
             {/* Email preview */}
             {appState === "done" && emailBody && (
               <EmailPreview
@@ -364,7 +401,8 @@ export default function DashboardPage() {
               </p>
               {[
                 "Analyzes the job description for role, company & requirements",
-                "Drafts email using only real data from your resume",
+                "Searches the web for recent company news — no API key needed",
+                "Drafts email using your resume + live research hook",
                 "Formats a clean signature from your resume details",
                 "Clean draft lands in your Gmail — you hit send",
               ].map((tip, i) => (
@@ -375,6 +413,24 @@ export default function DashboardPage() {
                   <p className="text-xs text-white/40 leading-relaxed">{tip}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Campaign mode CTA */}
+            <div className="mt-4 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl p-5">
+              <p className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
+                Applying to multiple companies?
+              </p>
+              <p className="text-xs text-white/40 mb-3 leading-relaxed">
+                Campaign Mode generates personalized emails for up to 10 companies at once — each
+                researched and tailored.
+              </p>
+              <Link
+                href="/campaign"
+                className="flex items-center justify-center gap-2 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/30 text-indigo-300 text-sm font-medium py-2.5 rounded-xl transition-all"
+              >
+                <Layers size={14} />
+                Launch Campaign Mode
+              </Link>
             </div>
           </div>
         </div>

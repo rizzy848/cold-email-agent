@@ -10,6 +10,7 @@ from services.gmail import send_email, is_gmail_connected
 from agents.job_analyzer import analyze_job
 from agents.email_drafter import draft_email
 from agents.formatter import format_signature
+from agents.research_agent import research_company, summarize_research
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ def get_llm_client() -> Groq:
     return Groq(api_key=os.getenv("LLM_API_KEY"))
 
 
-# ── Generate email ────────────────────────────────────────────────────────────
+# ── Generate email ─────────────────────────────────────────────────────────────
 
 @router.post("/generate-email")
 async def generate_email(
@@ -38,20 +39,31 @@ async def generate_email(
     # 2. Analyze job description
     job_info = analyze_job(job_description, client)
 
-    # 3. Draft email
-    draft = draft_email(job_info, resume_text, tone, client)
+    # 3. Web research — enrich with real company context (free, no API key)
+    research = research_company(job_info.get("company", ""), job_info.get("role", ""))
+    research_hook = summarize_research(
+        job_info.get("company", ""),
+        job_info.get("role", ""),
+        research,
+        client,
+    )
 
-    # 4. Format signature
+    # 4. Draft email (with research hook if found)
+    draft = draft_email(job_info, resume_text, tone, client, research_hook=research_hook)
+
+    # 5. Format signature
     final_body = format_signature(draft["body"], resume_text)
 
     return {
         "subject": draft["subject"],
         "body": final_body,
         "recipient_name": job_info.get("recruiter_name", ""),
+        "research_hook": research_hook,
+        "company_news": research.get("news", [])[:3],
     }
 
 
-# ── Send email ────────────────────────────────────────────────────────────────
+# ── Send email ─────────────────────────────────────────────────────────────────
 
 class SendEmailRequest(BaseModel):
     subject: str
