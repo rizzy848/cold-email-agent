@@ -8,6 +8,7 @@ import AgentProgress, { AgentStep } from "@/components/AgentProgress";
 import EmailPreview from "@/components/EmailPreview";
 import { Suspense } from "react";
 import GmailConnect from "@/components/GmailConnect";
+import Confetti from "@/components/Confetti";
 
 // ----- Types -----
 interface FormData {
@@ -194,6 +195,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
+      <Confetti trigger={emailSent} />
       {/* Top bar */}
       <header className="border-b border-white/5 bg-[#0a0a0f]/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center gap-4">
@@ -219,7 +221,13 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      {/* Background orbs */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-indigo-600/5 rounded-full blur-3xl orb-float" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-violet-600/4 rounded-full blur-3xl orb-float-slow" />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-[1fr_380px] gap-8 items-start">
           {/* ---- Left: Form + Output ---- */}
           <div className="space-y-6">
@@ -422,6 +430,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
